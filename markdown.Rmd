@@ -1,0 +1,323 @@
+---
+title: "Historical data leading up to the 2022 FIFA World Cup"
+author: "Agbasi Ikechukwu Christian"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+![World Cup Trophy](https://digitalhub.fifa.com/transform/5c8cef88-ad95-4e69-84f5-afeae91f5595/Brand_Protection_FIFA-World-Cup-Official-Trophy-P4)
+
+
+From the [maven data analystics](https://www.mavenanalytics.io/data-playground),We will be analysing Maven world cup challenge, We will be making some analysis on the Historical data leading to the 2022 FIFA world cup tournament in Qatar,  including all the matches from the previous world cups, all international matches for the qualified countries, and the groups and matches for the upcoming tournament.  
+In our analysis, our case study country will be Brazil, The Brazil national team 
+also nicknamed the **Seleção Canarinha** is one of the 32 footballing nations that will participating in this years tournament in Qatar. we will dig into data and tell a single-page story of a country's history with the World Cup, their road to Qatar, and their expectations for this year's tournament and also present our insight by using data visualization  
+
+##### Install the needed packages   
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+library(maps)
+
+```
+
+##### Import the dataset  
+
+```{r}
+world_cup_matches <- read.csv("2022_world_cup_matches.csv")
+world_cup_groups <- read.csv("2022_world_cup_groups.csv")
+international_matches <- read.csv("international_matches.csv")
+world_cup_games <- read.csv("world_cup_matches.csv")
+world_cup <- read.csv("world_cups.csv")
+```
+
+
+**Data preparation and cleaning**  
+
+```{r}
+Brazil_international_matches <- international_matches %>%     filter(international_matches$Home.Team =="Brazil" | international_matches$Away.Team =="Brazil")
+```
+
+```{r}
+world_cup_v2 <- world_cup %>% 
+  mutate(Runners.Up = recode(Runners.Up
+                         ,"Germany FR" = "Germany"))
+```
+
+```{r}
+world_cup_v2 <- world_cup %>% 
+  mutate(Third = recode(Third
+                             ,"Germany FR" = "Germany"))
+```
+
+```{r}
+world_cup_v2 <- world_cup %>% 
+  mutate(Winner = recode(Winner
+                             ,"Germany FR" = "Germany"))
+```
+
+
+```{r}
+Brazil_international_matches <- Brazil_international_matches %>% 
+  mutate(Tournament = recode(Tournament
+                                ,"Germany FR" = "Germany"))
+```
+
+```{r}
+Brazil_wc_game <- world_cup_games %>% 
+  filter(world_cup_games$Home.Team == "Brazil" | world_cup_games$Away.Team == "Brazil")
+```
+
+Number of goals scored at home and number of matches played in every tournament 
+
+```{r}
+Brazil_international_matches %>% 
+  group_by(Tournament) %>% 
+  filter(Home.Team == "Brazil") %>% 
+  summarise(total_home_goals = sum(Home.Goals),Num_of_match_played = n()) %>% 
+  arrange(desc(total_home_goals)) 
+```
+
+Number of goals scored at away and number of matches played in every tournament 
+
+```{r}
+Brazil_international_matches %>% 
+  group_by(Tournament) %>% 
+  filter(Away.Team == "Brazil") %>% 
+  summarise(total_away_goals = sum(Away.Goals),Num_of_match_played = n()) %>% 
+  arrange(desc(total_away_goals))
+```
+
+Number of goals conceded at home in all competition  
+
+```{r}
+Brazil_international_matches %>% 
+  filter(!Home.Team %in% c('Brazil'))%>% 
+  summarise(goals_conceded = sum(Home.Goals))
+```
+
+Number of goals conceded away in all competition  
+
+```{r}
+Brazil_international_matches %>% 
+  filter(!Away.Team %in% c('Brazil'))%>% 
+  summarise(goals_conceded = sum(Away.Goals))
+```
+
+
+world cup winning teams,match played and the number of tournament goals  
+
+```{r}
+world_cup %>% 
+  group_by(Year,Winner,Matches.Played) %>% 
+  drop_na(Goals.Scored) %>% 
+  summarise(num_of_goals = sum(Goals.Scored)) %>% 
+  arrange(-Matches.Played)
+```
+
+Total number of teams to participate in the world cup  
+
+```{r message=FALSE, warning=FALSE}
+Hteam <- world_cup_games %>% 
+  select(Home.Team)
+```
+
+
+```{r message=FALSE, warning=FALSE}
+Ateam <- world_cup_games %>% 
+  select(Away.Team) 
+```
+
+
+```{r message=FALSE, warning=FALSE}
+Ateam <- rename(
+  Ateam, Home.Team = Away.Team
+)
+```
+
+
+```{r message=FALSE, warning=FALSE}
+total_teams <- bind_rows(Ateam,Hteam)
+```
+
+Total numbers of Countries to make to the world cup  
+
+```{r}
+n_distinct(total_teams)
+```
+
+Number of games played in FIFA world cup   
+
+```{r}
+total_teams %>% 
+  group_by(Home.Team) %>% 
+  summarise(num_of_app = n()) %>% 
+  arrange(desc(num_of_app))
+```
+
+Number of goals scored by Brazil in the world cup  
+
+```{r}
+Hgoal <- world_cup_games %>% 
+  filter(Home.Team == 'Brazil') %>% 
+  summarise(Num_of_Hgoal = sum(Home.Goals))
+```
+
+```{r}
+Agoal <- world_cup_games %>% 
+  filter(Away.Team == 'Brazil') %>% 
+  summarise(num_of_Agoal = sum(Away.Goals))
+```
+
+```{r}
+world_cup_games %>% 
+  summarise(Brazil_wc_goals = sum(Hgoal+Agoal))
+```
+
+Number of goals conceded in the world by Brazil  
+
+
+```{r}
+Chgoal <- Brazil_wc_game %>% 
+  filter(!Home.Team == 'Brazil') %>% 
+  summarise(Num_of_Hgoal = sum(Home.Goals))
+```
+
+
+```{r}
+Cagoal <- Brazil_wc_game %>% 
+  filter(!Away.Team == 'Brazil') %>% 
+  summarise(num_of_Agoal = sum(Away.Goals))
+```
+
+
+```{r}
+Brazil_wc_game %>% 
+  summarise(conceded_goals = sum(Chgoal+Cagoal))
+```
+
+
+Number of world cup tournament  
+
+```{r}
+world_cup_v2 %>% 
+  drop_na(Goals.Scored) %>% 
+  summarise(number_of_edition= n())
+```
+
+Total number of goals scored in FIFA world cup  
+```{r}
+world_cup %>% 
+  drop_na(Goals.Scored) %>% 
+  summarise(total_goal = sum(Goals.Scored))
+```
+
+Average number of goals scored in FIFA world cup
+
+```{r}
+world_cup %>% 
+  drop_na(Goals.Scored) %>% 
+  summarise(Avg_goal = mean(Goals.Scored))
+```
+
+
+list of world cup winners
+
+```{r}
+world_cup_v2 %>% 
+  group_by(Winner) %>% 
+  drop_na(Goals.Scored) %>% 
+  summarise(number_of_winners = n()) %>% 
+  arrange(desc(number_of_winners))
+```
+
+list of world cup runners up  
+
+```{r}
+world_cup_v2 %>% 
+  group_by(Runners.Up) %>% 
+  drop_na(Goals.Scored) %>% 
+  summarise(Runners_up = n()) %>% 
+  arrange(desc(Runners_up))
+```
+
+list of world cup third place  
+
+```{r}
+world_cup_v2 %>% 
+  group_by(Third) %>% 
+  drop_na(Goals.Scored) %>% 
+  summarise(Third_place = n()) %>% 
+  arrange(desc(Third_place))
+```
+
+#### Visualization  
+
+match played and the number of tournament goals
+```{r}
+world_cup %>% 
+  group_by(Year,Winner,Matches.Played) %>% 
+  drop_na(Goals.Scored) %>% 
+  summarise(num_of_goals = sum(Goals.Scored)) %>% 
+  ggplot(aes(x = Matches.Played, y = num_of_goals, fill= Year,size = num_of_goals))+
+  geom_point()+
+  labs(title = "Number of goals scored in each FIFA world cup by Number of participants", subtitle = "Total number of goals by number of participating nations")+
+  labs(y= "Total number of goals scored", x = "Total number of matches played")
+```
+
+From our graph, as the games becomes more modernize and competitive, The number of participating teams are increased which gradually which increases the total number of goals scored in the competition over the years  
+
+
+Number of games played in world cup by every participating nations
+
+```{r}
+total_teams %>% 
+  group_by(Home.Team) %>% 
+  summarise(num_of_app = n()) %>% 
+  arrange(desc(num_of_app)) %>% 
+  head(20) %>%
+  arrange(-num_of_app) %>% 
+  ggplot(aes(x = Home.Team, y = num_of_app))+
+  geom_col()+
+  coord_flip() +
+  labs(y= "Participating nations", x = "Number of games played")+
+  labs(title = " Footballing nations and their total world cup games")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+list of FIFA world cup winners 
+
+```{r}
+world_cup_v2 %>% 
+  group_by(Winner) %>% 
+  drop_na(Goals.Scored) %>% 
+  summarise(number_of_winnings = n()) %>% 
+  ggplot(aes(x = Winner, y = number_of_winnings))+
+  geom_col(fill = "green")+
+  labs(y= "Number of champion", x = "Winning Nations")
+```
+The Brazilian football national team are the country with most FIFA world cup champions with a record breaking five times Trophies,Germany and Italy also record a joint number of champions with four Trophies each, Spain and England are also proud recipient of one Trophy each  
+
+
+list of world cup runners up  
+
+```{r}
+world_cup_v2 %>% 
+  group_by(Runners.Up) %>% 
+  drop_na(Goals.Scored) %>% 
+  summarise(Runners_up = n()) %>% 
+  arrange(desc(Runners_up)) %>% 
+  ggplot(aes(x =Runners.Up, y =Runners_up ))+
+  geom_col(fill = "red")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  labs(y= "Number of runners up", x = "Runners up Nations")
+```
+
+
+
+
